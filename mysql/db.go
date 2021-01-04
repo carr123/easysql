@@ -21,15 +21,16 @@ type Conn struct {
 	db     *sqlx.DB
 	tx     *sqlx.Tx
 	excter execAndQuery
+	ctx    context.Context
 }
 
 type QItem map[string]interface{}
 type QArray []QItem
 
 type execAndQuery interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	Queryx(query string, args ...interface{}) (*sqlx.Rows, error)
-	Select(dest interface{}, query string, args ...interface{}) error
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }
 
 //"root:123456@tcp(127.0.0.1:3306)/eshop?charset=utf8"
@@ -53,24 +54,43 @@ func (this *DBServer) Close() {
 }
 
 func (this *DBServer) NewConn() *Conn {
-	return &Conn{db: this.db, tx: nil, excter: this.db}
+	return &Conn{db: this.db, tx: nil, excter: this.db, ctx: context.Background()}
 }
 
-//mysql的事务不会重试，只会执行一次
 func (this *DBServer) ExecInTx(fn func(*Conn) error) error {
 	ctx := context.Background()
+	return this.ExecInTxContext(ctx, fn)
+}
+
+func (this *DBServer) ExecInTxContext(ctx context.Context, fn func(*Conn) error) error {
 	tx, err := this.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	conn := &Conn{db: this.db, tx: tx, excter: tx}
+	conn := &Conn{db: this.db, tx: tx, excter: tx, ctx: ctx}
 	if err := fn(conn); err == nil {
 		return tx.Commit()
 	} else {
 		tx.Rollback()
 		return err
 	}
+	return err
+}
+
+func (this *Conn) Context() context.Context {
+	if this.ctx != nil {
+		return this.ctx
+	}
+	return context.Background()
+}
+
+func (this *Conn) WithContext(ctx context.Context) *Conn {
+	if ctx == nil {
+		panic("nil context")
+	}
+	conn2 := &Conn{db: this.db, tx: this.tx, excter: this.excter, ctx: ctx}
+	return conn2
 }
 
 //insert update delete
@@ -82,7 +102,7 @@ func (this *Conn) Exec(cmd string, args ...interface{}) error {
 	}
 
 	query = this.db.Rebind(query)
-	_, err = this.excter.Exec(query, argsx...)
+	_, err = this.excter.ExecContext(this.Context(), query, argsx...)
 	return err
 }
 
@@ -93,6 +113,18 @@ func (this *Conn) BulkInsert(cmd string, nCol int, args ...interface{}) error {
 	var szSQL string
 	szBracket := "(" + strings.TrimSuffix(strings.Repeat("?,", nCol), ",") + "),"
 	szSQL = cmd + " values " + strings.TrimSuffix(strings.Repeat(szBracket, len(args)/nCol), ",")
+	return this.Exec(szSQL, args...)
+}
+
+//conn.BulkInsertEx("insert into msgs(fid, username, area)", nColumn, values, "ON DUPLICATE KEY UPDATE fid=fid") //(it won't trigger row update even though id is assigned to itself).
+func (this *Conn) BulkInsertEx(cmd string, nCol int, args []interface{}, szSQLsurfix ...string) error {
+	var szSQL string
+	szBracket := "(" + strings.TrimSuffix(strings.Repeat("?,", nCol), ",") + "),"
+	szSQL = cmd + " values " + strings.TrimSuffix(strings.Repeat(szBracket, len(args)/nCol), ",")
+	if len(szSQLsurfix) > 0 {
+		szSQL = szSQL + " " + strings.Join(szSQLsurfix, " ")
+	}
+
 	return this.Exec(szSQL, args...)
 }
 
@@ -108,7 +140,7 @@ func (this *Conn) Query(query string, args ...interface{}) (QArray, error) {
 	}
 	queryx = this.db.Rebind(queryx)
 
-	rows, err := this.excter.Queryx(queryx, argsx...)
+	rows, err := this.excter.QueryxContext(this.Context(), queryx, argsx...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +166,7 @@ func (this *Conn) Select(dest interface{}, query string, args ...interface{}) er
 		return err
 	}
 	queryx = this.db.Rebind(queryx)
-	return this.excter.Select(dest, queryx, argsx...)
+	return this.excter.SelectContext(this.Context(), dest, queryx, argsx...)
 }
 
 //select count(*) from ...
@@ -145,7 +177,7 @@ func (this *Conn) QueryCount(query string, args ...interface{}) (int64, error) {
 	}
 	queryx = this.db.Rebind(queryx)
 
-	rows, err := this.excter.Queryx(queryx, argsx...)
+	rows, err := this.excter.QueryxContext(this.Context(), queryx, argsx...)
 	if err != nil {
 		return 0, err
 	}

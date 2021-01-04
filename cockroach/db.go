@@ -133,8 +133,9 @@ func (this *Conn) BulkInsert(cmd string, nCol int, args ...interface{}) error {
 }
 
 //conn.BulkInsertEx("insert into msgs(fid, username, area)", nColumn, values, "ON CONFLICT(fid) DO NOTHING")
-//reference: INSERT INTO ON CONFLICT DO NOTHING
-//reference: INSERT INTO ON CONFLICT DO UPDATE
+//reference: INSERT INTO ON CONFLICT(id) DO NOTHING
+//reference: INSERT INTO ON CONFLICT(sn,orgid) DO UPDATE SET status=excluded.status
+//reference: INSERT INTO ON CONFLICT(id) DO UPDATE SET (status,name)=(excluded.status,excluded.name)
 func (this *Conn) BulkInsertEx(cmd string, nCol int, args []interface{}, szSQLsurfix ...string) error {
 	var szSQL string
 	szBracket := "(" + strings.TrimSuffix(strings.Repeat("?,", nCol), ",") + "),"
