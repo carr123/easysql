@@ -1,10 +1,15 @@
 package easysql
 
+//v1.0.0
+
 import (
 	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
+	"regexp"
+
 	"strings"
 	"time"
 
@@ -50,8 +55,14 @@ func (t *DATE) Scan(value interface{}) error {
 		return err
 	}
 
-	if t.NullString.Valid && len(t.NullString.String) > 10 {
-		t.NullString.String = t.NullString.String[0:10]
+	if t.NullString.Valid {
+		exp := regexp.MustCompile(`[1-9]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])`)
+		ss := exp.FindString(t.NullString.String)
+		if len(ss) < 10 {
+			return errors.New("date format error:" + t.NullString.String)
+		}
+
+		t.NullString.String = ss
 	}
 
 	return nil
@@ -152,6 +163,13 @@ func (t *DATETIME) Scan(value interface{}) error {
 	if t.NullString.Valid {
 		ss := strings.ReplaceAll(t.NullString.String, "T", " ")
 		ss = strings.ReplaceAll(ss, "Z", "")
+
+		exp := regexp.MustCompile(`[1-9]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])\s+(20|21|22|23|[0-1]\d):[0-5]\d:[0-5]\d`)
+		ss = exp.FindString(ss)
+		if len(ss) < 19 {
+			return errors.New("datetime format error:" + t.NullString.String)
+		}
+
 		t.NullString.String = ss
 	}
 	return nil
@@ -520,4 +538,3 @@ type StringArray = pq.StringArray
 type Int64Array = pq.Int64Array
 type Float64Array = pq.Float64Array
 type ByteArray = pq.ByteaArray
-type BoolArray = pq.BoolArray
