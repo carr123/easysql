@@ -250,6 +250,10 @@ func JsonDemo() {
 	if err := conn.Select(&info, "select userid,posts from accounts"); err != nil {
 		fmt.Println(err)
 	}
+
+	//更新jsonb 字段，userinfo是json字段, address是key
+	//也可以把json字段更新为json对象(传入json字符串即可)
+	err := conn.Exec(`update aaa set userinfo=jsonb_set(userinfo, '{address}', ?) where userid=1`, "shanghai")
 }
 
 func arraydemo() {

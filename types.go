@@ -96,6 +96,21 @@ func (t DATE) String() string {
 	}
 }
 
+func (t DATE) ToTime() time.Time {
+	var tm time.Time
+	var err error
+
+	if t.NullString.Valid {
+		tm, err = time.Parse("2006-01-02", t.NullString.String)
+		if err != nil {
+			panic(err)
+		}
+		return tm
+	} else {
+		return tm
+	}
+}
+
 //格式为: "2006-01-02"
 func (t *DATE) SetVal(szDate string) error {
 	if len(szDate) > 0 {
@@ -200,6 +215,21 @@ func (t DATETIME) String() string {
 		return t.NullString.String
 	} else {
 		return ""
+	}
+}
+
+func (t DATETIME) ToTime() time.Time {
+	var tm time.Time
+	var err error
+
+	if t.NullString.Valid {
+		tm, err = time.Parse("2006-01-02 15:04:05", t.NullString.String)
+		if err != nil {
+			panic(err)
+		}
+		return tm
+	} else {
+		return tm
 	}
 }
 
