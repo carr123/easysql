@@ -98,10 +98,14 @@ func (t DATE) String() string {
 
 func (t DATE) ToTime() time.Time {
 	var tm time.Time
-	var err error
 
 	if t.NullString.Valid {
-		tm, err = time.Parse("2006-01-02", t.NullString.String)
+		loc, err := time.LoadLocation("Local")
+		if err != nil {
+			panic(err)
+		}
+
+		tm, err = time.ParseInLocation("2006-01-02", t.NullString.String, loc)
 		if err != nil {
 			panic(err)
 		}
@@ -137,7 +141,12 @@ func (t *DATE) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	tt, err := time.Parse("2006-01-02", ss)
+	loc, err := time.LoadLocation("Local")
+	if err != nil {
+		return err
+	}
+
+	tt, err := time.ParseInLocation("2006-01-02", ss, loc)
 	if err != nil {
 		return err
 	}
@@ -220,10 +229,13 @@ func (t DATETIME) String() string {
 
 func (t DATETIME) ToTime() time.Time {
 	var tm time.Time
-	var err error
-
 	if t.NullString.Valid {
-		tm, err = time.Parse("2006-01-02 15:04:05", t.NullString.String)
+		loc, err := time.LoadLocation("Local")
+		if err != nil {
+			panic(err)
+		}
+
+		tm, err := time.ParseInLocation("2006-01-02 15:04:05", t.NullString.String, loc)
 		if err != nil {
 			panic(err)
 		}
@@ -239,7 +251,12 @@ func (t *DATETIME) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	tt, err := time.Parse("2006-01-02 15:04:05", ss)
+	loc, err := time.LoadLocation("Local")
+	if err != nil {
+		return err
+	}
+
+	tt, err := time.ParseInLocation("2006-01-02 15:04:05", ss, loc)
 	if err != nil {
 		return err
 	}
