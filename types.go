@@ -7,9 +7,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
-	"regexp"
-
 	"strings"
 	"time"
 
@@ -31,54 +28,84 @@ type Int64Array = easysql.Int64Array
 //定义的数据类型能够接收数据库的空字段。空字段被解析为默认类型。比如 "", 0, false
 //------------------------------------------------------------------------------
 
-//日期类型为字符串，格式为: 2006-01-02
-//空字段解析为空字符串
+//注意:日期不带时区信息
 type DATE struct {
-	sql.NullString
+	tm     time.Time
+	Valid  bool
+	layout string //用于json和字符串， 序列号和反序列号显示格式
 }
 
+//szDate 为UTC时间。 layout格式为: "2006-01-02"
 func NewDate(szDate string) DATE {
 	obj := DATE{}
-	obj.NullString.Valid = false
+	obj.Valid = false
+	obj.layout = "2006-01-02"
+
 	if len(szDate) > 0 {
-		if _, err := time.Parse("2006-01-02", szDate); err == nil {
-			obj.NullString.String = szDate
-			obj.NullString.Valid = true
+		if tm, err := time.ParseInLocation(obj.layout, szDate, time.UTC); err == nil {
+			obj.Valid = true
+			obj.tm = tm
 		}
 	}
+
 	return obj
 }
 
+//时间字符串解析/显示 layout
+func (t *DATE) SetLayout(layout string) *DATE {
+	t.layout = layout
+	return t
+}
+
 // Scan implements the Scanner interface.
+// read data from database
 func (t *DATE) Scan(value interface{}) error {
-	if err := t.NullString.Scan(value); err != nil {
+	var ss sql.NullString
+	if err := ss.Scan(value); err != nil {
 		return err
 	}
 
-	if t.NullString.Valid {
-		exp := regexp.MustCompile(`[1-9]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])`)
-		ss := exp.FindString(t.NullString.String)
-		if len(ss) < 10 {
-			return errors.New("date format error:" + t.NullString.String)
-		}
-
-		t.NullString.String = ss
+	if !ss.Valid {
+		t.Valid = false
+		return nil
 	}
+
+	tm, err := parseTimeString(ss.String, time.UTC)
+	if err != nil {
+		return err
+	}
+
+	t.Valid = true
+	t.tm = tm
 
 	return nil
 }
 
 // Value implements the driver Valuer interface.
+// save data to database
 func (t DATE) Value() (driver.Value, error) {
-	if !t.NullString.Valid {
+	if !t.Valid {
 		return nil, nil
 	}
-	return t.NullString.String, nil
+
+	return t.tm.UTC(), nil
+}
+
+func (t DATE) String() string {
+	if !t.Valid {
+		return ""
+	}
+
+	if len(t.layout) == 0 {
+		t.layout = "2006-01-02"
+	}
+
+	return t.tm.Format(t.layout)
 }
 
 func (t DATE) MarshalJSON() ([]byte, error) {
-	if t.NullString.Valid {
-		return json.Marshal(t.NullString.String)
+	if t.Valid {
+		return json.Marshal(t.String())
 	} else {
 		return json.Marshal("")
 	}
@@ -88,51 +115,22 @@ func (t DATE) MarshalText() ([]byte, error) {
 	return []byte(t.String()), nil
 }
 
-func (t DATE) String() string {
-	if t.NullString.Valid {
-		return t.NullString.String
-	} else {
-		return ""
-	}
-}
-
-func (t DATE) ToTime() time.Time {
-	var tm time.Time
-
-	if t.NullString.Valid {
-		loc, err := time.LoadLocation("Local")
-		if err != nil {
-			panic(err)
-		}
-
-		tm, err = time.ParseInLocation("2006-01-02", t.NullString.String, loc)
-		if err != nil {
-			panic(err)
-		}
-		return tm
-	} else {
-		return tm
-	}
-}
-
-//格式为: "2006-01-02"
 func (t *DATE) SetVal(szDate string) error {
-	if len(szDate) > 0 {
-		if _, err := time.Parse("2006-01-02", szDate); err == nil {
-			t.NullString.String = szDate
-			t.NullString.Valid = true
-			return nil
-		} else {
-			return err
-		}
+	if len(t.layout) == 0 {
+		t.layout = "2006-01-02"
 	}
 
-	return nil
+	if tm, err := time.ParseInLocation(t.layout, szDate, time.UTC); err == nil {
+		t.Valid = true
+		t.tm = tm
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (t *DATE) SetNULL() {
-	t.NullString.String = ""
-	t.NullString.Valid = false
+	t.Valid = false
 }
 
 func (t *DATE) UnmarshalJSON(data []byte) error {
@@ -141,20 +139,17 @@ func (t *DATE) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	loc, err := time.LoadLocation("Local")
-	if err != nil {
-		return err
+	if len(t.layout) == 0 {
+		t.layout = "2006-01-02"
 	}
 
-	tt, err := time.ParseInLocation("2006-01-02", ss, loc)
-	if err != nil {
+	if tm, err := time.ParseInLocation(t.layout, ss, time.UTC); err == nil {
+		t.Valid = true
+		t.tm = tm
+		return nil
+	} else {
 		return err
 	}
-
-	t.NullString.Valid = true
-	t.NullString.String = tt.Format("2006-01-02")
-
-	return nil
 }
 
 //------------------------------------------------------------------------------
