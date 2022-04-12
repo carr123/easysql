@@ -1,4 +1,4 @@
-module easysql
+module github.com/carr123/easysql
 
 go 1.17
 
