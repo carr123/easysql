@@ -101,16 +101,16 @@ func (this *Conn) Context() context.Context {
 	return context.Background()
 }
 
-func (this *Conn) Ping() error {
-	return this.db.Ping()
-}
-
 func (this *Conn) WithContext(ctx context.Context) *Conn {
 	if ctx == nil {
 		panic("nil context")
 	}
 	conn2 := &Conn{db: this.db, tx: this.tx, excter: this.excter, ctx: ctx}
 	return conn2
+}
+
+func (this *Conn) Ping() error {
+	return this.db.Ping()
 }
 
 //insert update delete
