@@ -92,6 +92,10 @@ func (this *Conn) WithContext(ctx context.Context) *Conn {
 	return conn2
 }
 
+func (this *Conn) Ping() error {
+	return this.db.Ping()
+}
+
 //insert update delete
 //create table, alter index etc.
 func (this *Conn) Exec(cmd string, args ...interface{}) error {
