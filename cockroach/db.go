@@ -101,6 +101,10 @@ func (this *Conn) Context() context.Context {
 	return context.Background()
 }
 
+func (this *Conn) Ping() error {
+	return this.db.Ping()
+}
+
 func (this *Conn) WithContext(ctx context.Context) *Conn {
 	if ctx == nil {
 		panic("nil context")
