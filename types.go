@@ -91,6 +91,15 @@ func (t DATE) Value() (driver.Value, error) {
 	return t.tm.UTC(), nil
 }
 
+
+func (t DATE) ToTime() time.Time {
+  if !t.Valid {
+		return time.Time{}
+	}
+ 
+  return t.tm
+}
+
 func (t DATE) String() string {
 	if !t.Valid {
 		return ""
