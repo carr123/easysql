@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cockroach-go/crdb"
+	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -51,7 +51,7 @@ func (t *TxCompatible) Rollback(context.Context) error {
 	return t.Tx.Rollback()
 }
 
-//"postgresql://root@127.0.0.1:26257/bank?sslmode=disable"
+// "postgresql://root@127.0.0.1:26257/bank?sslmode=disable"
 func New(dataSourceName string, MaxIdleConn int) (*DBServer, error) {
 	inst := &DBServer{}
 	db, err := sqlx.Connect("postgres", dataSourceName)
@@ -113,8 +113,8 @@ func (this *Conn) Ping() error {
 	return this.db.Ping()
 }
 
-//insert update delete
-//create table, alter index etc.
+// insert update delete
+// create table, alter index etc.
 func (this *Conn) Exec(cmd string, args ...interface{}) error {
 	query, argsx, err := sqlx.In(cmd, args...)
 	if err != nil {
@@ -126,9 +126,9 @@ func (this *Conn) Exec(cmd string, args ...interface{}) error {
 	return err
 }
 
-//insert many records at one shot. often insert many logs.
-//values := make([]interface{}, 0, batchsize*nCol)
-//conn.BulkInsert("insert into files(bucket,filename)", nCol, values...)
+// insert many records at one shot. often insert many logs.
+// values := make([]interface{}, 0, batchsize*nCol)
+// conn.BulkInsert("insert into files(bucket,filename)", nCol, values...)
 func (this *Conn) BulkInsert(cmd string, nCol int, args ...interface{}) error {
 	var szSQL string
 	szBracket := "(" + strings.TrimSuffix(strings.Repeat("?,", nCol), ",") + "),"
@@ -136,10 +136,10 @@ func (this *Conn) BulkInsert(cmd string, nCol int, args ...interface{}) error {
 	return this.Exec(szSQL, args...)
 }
 
-//conn.BulkInsertEx("insert into msgs(fid, username, area)", nColumn, values, "ON CONFLICT(fid) DO NOTHING")
-//reference: INSERT INTO ON CONFLICT(id) DO NOTHING
-//reference: INSERT INTO ON CONFLICT(sn,orgid) DO UPDATE SET status=excluded.status
-//reference: INSERT INTO ON CONFLICT(id) DO UPDATE SET (status,name)=(excluded.status,excluded.name)
+// conn.BulkInsertEx("insert into msgs(fid, username, area)", nColumn, values, "ON CONFLICT(fid) DO NOTHING")
+// reference: INSERT INTO ON CONFLICT(id) DO NOTHING
+// reference: INSERT INTO ON CONFLICT(sn,orgid) DO UPDATE SET status=excluded.status
+// reference: INSERT INTO ON CONFLICT(id) DO UPDATE SET (status,name)=(excluded.status,excluded.name)
 func (this *Conn) BulkInsertEx(cmd string, nCol int, args []interface{}, szSQLsurfix ...string) error {
 	var szSQL string
 	szBracket := "(" + strings.TrimSuffix(strings.Repeat("?,", nCol), ",") + "),"
@@ -155,7 +155,7 @@ func MakeQArray() QArray {
 	return make(QArray, 0)
 }
 
-//query database
+// query database
 func (this *Conn) Query(query string, args ...interface{}) (QArray, error) {
 	queryx, argsx, err := sqlx.In(query, args...)
 	if err != nil {
@@ -182,7 +182,7 @@ func (this *Conn) Query(query string, args ...interface{}) (QArray, error) {
 	return result, nil
 }
 
-//query database
+// query database
 func (this *Conn) Select(dest interface{}, query string, args ...interface{}) error {
 	queryx, argsx, err := sqlx.In(query, args...)
 	if err != nil {
@@ -192,7 +192,7 @@ func (this *Conn) Select(dest interface{}, query string, args ...interface{}) er
 	return this.excter.SelectContext(this.Context(), dest, queryx, argsx...)
 }
 
-//select count(*) from ...
+// select count(*) from ...
 func (this *Conn) QueryCount(query string, args ...interface{}) (int64, error) {
 	queryx, argsx, err := sqlx.In(query, args...)
 	if err != nil {
